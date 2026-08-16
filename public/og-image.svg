@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#071813"/>
+  <circle cx="170" cy="110" r="210" fill="#145542" fill-opacity=".28"/>
+  <circle cx="1035" cy="110" r="180" fill="#D6A73A" fill-opacity=".16"/>
+  <rect x="86" y="96" width="1028" height="438" rx="48" fill="#0C1F1A" stroke="#D8E9DF" stroke-opacity=".12"/>
+  <text x="140" y="250" fill="#F7F7F3" font-size="72" font-family="Arial, sans-serif" font-weight="700">SopySafe</text>
+  <text x="140" y="320" fill="#BDE7D2" font-size="30" font-family="Arial, sans-serif">Shop Smart, Shop Safe</text>
+  <text x="140" y="390" fill="#E5E7EB" font-size="24" font-family="Arial, sans-serif">Premium Indian e-commerce with trust-first design, secure checkout, and fast discovery.</text>
+  <rect x="140" y="438" width="204" height="58" rx="29" fill="#F7F7F3"/>
+  <text x="188" y="476" fill="#071813" font-size="22" font-family="Arial, sans-serif" font-weight="700">Explore Shop</text>
+</svg>
