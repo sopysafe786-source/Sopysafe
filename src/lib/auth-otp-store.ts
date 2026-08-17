@@ -1,37 +1,4 @@
-import 'server-only'
-
 import crypto from 'node:crypto'
-import { deleteJsonFile, readJsonFile, writeJsonFile } from '@/lib/persistent-json'
-
-type OtpRecord = {
-  identifier: string
-  name?: string
-  code: string
-  expiresAt: number
-}
-
-type StoredUser = {
-  id: string
-  name: string
-  email?: string
-  phone?: string
-  image?: string
-  createdAt: string
-  updatedAt: string
-}
-
-type StoredAccount = {
-  provider: 'google'
-  providerAccountId: string
-  userId: string
-}
-
-type AuthState = {
-  users: StoredUser[]
-  accounts: StoredAccount[]
-  otps: Record<string, OtpRecord>
-  pendingProfiles: Record<string, { name?: string; expiresAt: number }>
-}
 
 export type AuthSession = {
   id: string
@@ -56,35 +23,9 @@ export type GoogleProfile = {
   email_verified?: boolean
 }
 
-const AUTH_STATE_FILE = 'auth-state.json'
 const SESSION_COOKIE = 'sopysafe-auth-session'
 const GOOGLE_STATE_COOKIE = 'sopysafe-google-oauth'
 const SIGNING_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? 'sopysafe-dev-secret'
-
-function normalizeIdentifier(identifier: string) {
-  return identifier.trim().toLowerCase()
-}
-
-function normalizePhone(identifier: string) {
-  return identifier.replace(/[^\d+]/g, '')
-}
-
-function createDefaultState(): AuthState {
-  return {
-    users: [],
-    accounts: [],
-    otps: {},
-    pendingProfiles: {},
-  }
-}
-
-function loadState(): AuthState {
-  return readJsonFile<AuthState>(AUTH_STATE_FILE, createDefaultState())
-}
-
-function saveState(state: AuthState) {
-  writeJsonFile(AUTH_STATE_FILE, state)
-}
 
 function signPayload(value: string) {
   return crypto.createHmac('sha256', SIGNING_SECRET).update(value).digest('base64url')
@@ -107,187 +48,6 @@ function decodePayload<T>(value?: string | null) {
   } catch {
     return null
   }
-}
-
-function createUserIdentifier(name: string) {
-  return name.trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-+|-+$/g, '') || 'customer'
-}
-
-function getDisplayName(identifier: string, name?: string) {
-  if (name?.trim()) return name.trim()
-  if (identifier.includes('@')) {
-    return identifier.split('@')[0]?.replace(/[^a-z0-9]+/gi, ' ').trim() || 'Customer'
-  }
-  return `Customer ${identifier.slice(-4)}`
-}
-
-function getIdentityShape(identifier: string) {
-  const normalized = normalizeIdentifier(identifier)
-  return normalized.includes('@')
-    ? { email: normalized, phone: undefined }
-    : { email: undefined, phone: normalizePhone(normalized) }
-}
-
-function upsertUser(
-  state: AuthState,
-  input: {
-    name?: string
-    email?: string
-    phone?: string
-    image?: string
-    provider?: 'google' | 'otp'
-    providerAccountId?: string
-  },
-) {
-  const existingAccount =
-    input.provider && input.providerAccountId
-      ? state.accounts.find(
-          (account) =>
-            account.provider === input.provider && account.providerAccountId === input.providerAccountId,
-        )
-      : undefined
-
-  let user = existingAccount ? state.users.find((item) => item.id === existingAccount.userId) : undefined
-
-  if (!user && input.email) {
-    user = state.users.find((item) => item.email?.toLowerCase() === input.email?.toLowerCase())
-  }
-
-  if (!user && input.phone) {
-    user = state.users.find((item) => item.phone === input.phone)
-  }
-
-  if (!user) {
-    const now = new Date().toISOString()
-    user = {
-      id: crypto.randomUUID(),
-      name: input.name?.trim() || input.email?.split('@')[0] || input.phone?.slice(-4) || 'Customer',
-      email: input.email?.trim() || undefined,
-      phone: input.phone?.trim() || undefined,
-      image: input.image,
-      createdAt: now,
-      updatedAt: now,
-    }
-    state.users.unshift(user)
-  } else {
-    user.name = input.name?.trim() || user.name
-    user.email = input.email?.trim() || user.email
-    user.phone = input.phone?.trim() || user.phone
-    user.image = input.image ?? user.image
-    user.updatedAt = new Date().toISOString()
-  }
-
-  if (input.provider === 'google' && input.providerAccountId) {
-    const currentAccount = state.accounts.find(
-      (account) => account.provider === input.provider && account.providerAccountId === input.providerAccountId,
-    )
-
-    if (!currentAccount) {
-      state.accounts.unshift({
-        provider: input.provider,
-        providerAccountId: input.providerAccountId,
-        userId: user.id,
-      })
-    } else {
-      currentAccount.userId = user.id
-    }
-  }
-
-  return user
-}
-
-export function createOtp(identifier: string, name?: string) {
-  const normalized = normalizeIdentifier(identifier)
-  const code = String(Math.floor(100000 + Math.random() * 900000))
-  const state = loadState()
-
-  state.otps[normalized] = {
-    identifier: normalized,
-    name: name?.trim() || undefined,
-    code,
-    expiresAt: Date.now() + 5 * 60 * 1000,
-  }
-
-  saveState(state)
-  return code
-}
-
-export function rememberPendingProfile(identifier: string, name?: string) {
-  const normalized = normalizeIdentifier(identifier)
-  const state = loadState()
-  state.pendingProfiles[normalized] = {
-    name: name?.trim() || undefined,
-    expiresAt: Date.now() + 10 * 60 * 1000,
-  }
-  saveState(state)
-}
-
-function resolvePendingName(state: AuthState, identifier: string, fallback?: string) {
-  const normalized = normalizeIdentifier(identifier)
-  const profile = state.pendingProfiles[normalized]
-  if (!profile) {
-    return fallback
-  }
-  if (profile.expiresAt < Date.now()) {
-    delete state.pendingProfiles[normalized]
-    saveState(state)
-    return fallback
-  }
-
-  delete state.pendingProfiles[normalized]
-  return profile.name || fallback
-}
-
-export function finalizeSessionFromIdentifier(
-  identifier: string,
-  provider: 'otp' | 'google',
-  extra?: { name?: string; image?: string; providerAccountId?: string },
-) {
-  const normalized = normalizeIdentifier(identifier)
-  const state = loadState()
-  const pendingName = resolvePendingName(state, normalized, extra?.name)
-  const identity = getIdentityShape(normalized)
-  const user = upsertUser(state, {
-    name: pendingName,
-    email: identity.email,
-    phone: identity.phone,
-    image: extra?.image,
-    provider: provider === 'google' ? 'google' : 'otp',
-    providerAccountId: extra?.providerAccountId,
-  })
-  saveState(state)
-
-  return {
-    id: user.id,
-    name: user.name || getDisplayName(normalized, pendingName),
-    identifier: normalized,
-    image: user.image ?? null,
-    provider,
-  } satisfies AuthSession
-}
-
-export function consumeOtp(identifier: string, code: string) {
-  const normalized = normalizeIdentifier(identifier)
-  const state = loadState()
-  const record = state.otps[normalized]
-
-  if (!record) return null
-  if (record.expiresAt < Date.now()) {
-    delete state.otps[normalized]
-    saveState(state)
-    return null
-  }
-
-  if (record.code !== code.trim()) {
-    return null
-  }
-
-  delete state.otps[normalized]
-  saveState(state)
-
-  return finalizeSessionFromIdentifier(record.identifier, 'otp', {
-    name: record.name,
-  })
 }
 
 export function createGoogleOAuthState(returnTo = '/account') {
@@ -388,28 +148,6 @@ export async function fetchGoogleProfile(accessToken: string) {
   return (await response.json()) as GoogleProfile
 }
 
-export function upsertGoogleSession(profile: GoogleProfile) {
-  const state = loadState()
-  const email = profile.email?.trim().toLowerCase()
-  const user = upsertUser(state, {
-    name: resolvePendingName(state, email ?? profile.sub, profile.name || profile.email || 'Google User'),
-    email,
-    image: profile.picture,
-    provider: 'google',
-    providerAccountId: profile.sub,
-  })
-
-  saveState(state)
-
-  return {
-    id: user.id,
-    name: user.name,
-    identifier: email || profile.sub,
-    image: user.image ?? null,
-    provider: 'google' as const,
-  } satisfies AuthSession
-}
-
 export function encodeSession(session: AuthSession) {
   return encodePayload(session)
 }
@@ -440,8 +178,4 @@ export function getSessionCookieName() {
 
 export function getGoogleStateCookieName() {
   return GOOGLE_STATE_COOKIE
-}
-
-export function clearAuthStateForTests() {
-  deleteJsonFile(AUTH_STATE_FILE)
 }

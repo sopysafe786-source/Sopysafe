@@ -6,7 +6,7 @@ let pool: Pool | null = null
 let schemaReady: Promise<void> | null = null
 
 export function getMySqlUrl() {
-  return process.env.MYSQL_URL?.trim() || process.env.DATABASE_URL?.trim() || ''
+  return process.env.MYSQL_URL?.trim() || ''
 }
 
 export function isMySqlConfigured() {
@@ -49,4 +49,3 @@ export async function ensureMySqlSchema() {
 
   return schemaReady
 }
-

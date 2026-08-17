@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import mysql from 'mysql2/promise'
 import {
   categories as defaultCategories,
@@ -8,13 +6,8 @@ import {
   products as defaultProducts,
 } from '../src/lib/storefront-data.ts'
 
-const ROOT_DIR = process.cwd()
-const DATA_DIR = path.join(ROOT_DIR, '.data')
-const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json')
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json')
-
 function getMySqlUrl() {
-  return process.env.MYSQL_URL?.trim() || process.env.DATABASE_URL?.trim() || ''
+  return process.env.MYSQL_URL?.trim() || ''
 }
 
 function normalizeProduct(product) {
@@ -35,40 +28,7 @@ function createDefaultCatalogState() {
   }
 }
 
-function normalizeCatalogState(state) {
-  const fallback = createDefaultCatalogState()
-  return {
-    site: { ...defaultSiteContent, ...(state?.site ?? {}) },
-    categories: Array.isArray(state?.categories) && state.categories.length ? state.categories : fallback.categories,
-    products:
-      Array.isArray(state?.products) && state.products.length
-        ? state.products.map(normalizeProduct)
-        : fallback.products,
-    homeSectionOrder:
-      Array.isArray(state?.homeSectionOrder) && state.homeSectionOrder.length
-        ? state.homeSectionOrder
-        : fallback.homeSectionOrder,
-    updatedAt:
-      typeof state?.updatedAt === 'string' && state.updatedAt.trim() ? state.updatedAt.trim() : new Date().toISOString(),
-  }
-}
-
-async function readJsonFile(filePath) {
-  try {
-    const raw = await fs.readFile(filePath, 'utf8')
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-async function readSeedState() {
-  const catalogState = normalizeCatalogState(await readJsonFile(CATALOG_FILE))
-  const ordersJson = await readJsonFile(ORDERS_FILE)
-  const ordersState = {
-    orders: Array.isArray(ordersJson?.orders) ? ordersJson.orders : [],
-  }
-
+function createSeedState() {
   const authState = {
     users: [],
     accounts: [],
@@ -77,8 +37,8 @@ async function readSeedState() {
   }
 
   return {
-    catalogState,
-    ordersState,
+    catalogState: createDefaultCatalogState(),
+    ordersState: { orders: [] },
     authState,
   }
 }
@@ -109,7 +69,7 @@ async function writeState(pool, stateKey, payload) {
 async function main() {
   const mysqlUrl = getMySqlUrl()
   if (!mysqlUrl) {
-    throw new Error('MYSQL_URL or DATABASE_URL is required before seeding MySQL.')
+    throw new Error('MYSQL_URL is required before seeding MySQL.')
   }
 
   const pool = mysql.createPool(mysqlUrl)
@@ -122,7 +82,7 @@ async function main() {
       await pool.execute('DELETE FROM app_state')
     }
 
-    const { catalogState, ordersState, authState } = await readSeedState()
+    const { catalogState, ordersState, authState } = createSeedState()
 
     await writeState(pool, 'catalog_state', catalogState)
     await writeState(pool, 'orders_state', ordersState)

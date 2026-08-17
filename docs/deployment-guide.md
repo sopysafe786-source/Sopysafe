@@ -12,7 +12,6 @@
 ## Required Environment Variables
 - `NEXT_PUBLIC_SITE_URL`
 - `MYSQL_URL`
-- `DATABASE_URL` optional fallback
 - `AUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
@@ -24,7 +23,7 @@
 
 ## Storage
 - MySQL is the primary store.
-- `app_state` holds catalog, auth, and order JSON payloads.
+- `app_state` holds catalog, auth, and order JSON payloads in MySQL.
 - `src/server/db/schema.sql` defines the table.
 
 ## Go-Live Checks

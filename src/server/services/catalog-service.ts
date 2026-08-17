@@ -1,7 +1,5 @@
 import { getCatalogCategory, getCatalogProduct, getCatalogState, resetCatalogState, saveCatalogState } from '@/lib/catalog-store'
 import type { CatalogState } from '@/lib/catalog-store'
-import { isMySqlConfigured } from '@/server/db/mysql'
-import { deleteMySqlState, readMySqlState, writeMySqlState } from '@/server/db/mysql-state'
 
 function scoreProduct(query: string, product: CatalogState['products'][number]) {
   const normalized = query.trim().toLowerCase()
@@ -21,34 +19,16 @@ function scoreProduct(query: string, product: CatalogState['products'][number]) 
   return score + product.rating * 2 + product.reviews / 100
 }
 
-const CATALOG_STATE_KEY = 'catalog_state'
-
 export async function readCatalog() {
-  if (!isMySqlConfigured()) {
-    return getCatalogState()
-  }
-
-  return readMySqlState<CatalogState>(CATALOG_STATE_KEY, getCatalogState())
+  return getCatalogState()
 }
 
 export async function writeCatalog(patch: Partial<CatalogState>) {
-  if (!isMySqlConfigured()) {
-    return saveCatalogState(patch)
-  }
-
-  const next = { ...(await readCatalog()), ...patch }
-  return writeMySqlState(CATALOG_STATE_KEY, next)
+  return saveCatalogState(patch)
 }
 
 export async function resetCatalog() {
-  const next = resetCatalogState()
-
-  if (!isMySqlConfigured()) {
-    return next
-  }
-
-  await deleteMySqlState(CATALOG_STATE_KEY)
-  return writeMySqlState(CATALOG_STATE_KEY, next)
+  return resetCatalogState()
 }
 
 export async function listCatalogProducts() {
@@ -60,11 +40,11 @@ export async function listCatalogCategories() {
 }
 
 export async function findCatalogProduct(slug: string) {
-  return (await readCatalog()).products.find((product) => product.slug === slug) ?? null
+  return getCatalogProduct(slug)
 }
 
 export async function findCatalogCategory(slug: string) {
-  return (await readCatalog()).categories.find((category) => category.slug === slug) ?? null
+  return getCatalogCategory(slug)
 }
 
 export async function searchCatalogProducts(query: string) {

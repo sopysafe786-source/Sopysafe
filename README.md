@@ -32,7 +32,7 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
 - Google login uses the standard OAuth code flow with PKCE.
 - OTP delivery uses Twilio Verify when configured; otherwise the local dev fallback still works.
 - Catalog, auth, and order state are stored in MySQL `app_state` rows.
-- The local `.data` folder is used as a seed source and fallback snapshot.
+- Seeding is handled through MySQL, not local files.
 - The app also exposes `/api/health` for deployment checks and `/api/catalog` for the live storefront state.
 
 ## Production checklist
@@ -55,5 +55,5 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
 ## Backend stack
 - API layer: Next.js App Router route handlers
 - Service layer: TypeScript backend services in `src/server/services`
-- Storage layer: MySQL-backed `app_state` JSON storage with local fallback snapshots
-- Database layer: MySQL via `MYSQL_URL` with `DATABASE_URL` fallback for compatibility
+- Storage layer: MySQL-backed `app_state` JSON storage
+- Database layer: MySQL via `MYSQL_URL`

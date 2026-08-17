@@ -5,7 +5,6 @@ Use this checklist before you publish the storefront.
 ## Environment
 - Set `NEXT_PUBLIC_SITE_URL` to the live domain.
 - Set `MYSQL_URL` to the production MySQL connection string.
-- Set `DATABASE_URL` as the same MySQL URL if you want compatibility fallback.
 - Set `AUTH_SECRET` to a long random secret.
 - Add Google OAuth credentials if login is enabled.
 - Add Twilio Verify credentials if OTP login is enabled.

@@ -1,24 +1,17 @@
 import crypto from 'node:crypto'
 import {
   buildGoogleAuthUrl,
-  clearAuthStateForTests as clearLocalAuthStateForTests,
-  consumeOtp as consumeLocalOtp,
   createCodeChallenge,
   createGoogleOAuthState,
-  createOtp as createLocalOtp,
   decodeGoogleOAuthState,
   decodeSession,
   encodeSession,
   exchangeGoogleCode,
   fetchGoogleProfile,
-  finalizeSessionFromIdentifier as finalizeLocalSessionFromIdentifier,
   getGoogleStateCookieName,
   getSessionCookieName,
-  rememberPendingProfile as rememberLocalPendingProfile,
-  upsertGoogleSession as upsertLocalGoogleSession,
 } from '@/lib/auth-otp-store'
 import { deleteMySqlState, readMySqlState, writeMySqlState } from '@/server/db/mysql-state'
-import { isMySqlConfigured } from '@/server/db/mysql'
 
 type OtpRecord = {
   identifier: string
@@ -72,6 +65,8 @@ type FinalizeInput = {
   providerAccountId?: string
 }
 
+const AUTH_STATE_KEY = 'auth_state'
+
 function normalizeIdentifier(identifier: string) {
   return identifier.trim().toLowerCase()
 }
@@ -105,11 +100,11 @@ function resolveDisplayName(identifier: string, name?: string) {
 }
 
 async function loadState() {
-  return readMySqlState<AuthState>('auth_state', createDefaultState())
+  return readMySqlState<AuthState>(AUTH_STATE_KEY, createDefaultState())
 }
 
 async function saveState(state: AuthState) {
-  return writeMySqlState('auth_state', state)
+  return writeMySqlState(AUTH_STATE_KEY, state)
 }
 
 function upsertUser(
@@ -236,10 +231,6 @@ export {
 }
 
 export async function createOtp(identifier: string, name?: string) {
-  if (!isMySqlConfigured()) {
-    return createLocalOtp(identifier, name)
-  }
-
   const state = await loadState()
   const normalized = normalizeIdentifier(identifier)
   const code = String(Math.floor(100000 + Math.random() * 900000))
@@ -256,10 +247,6 @@ export async function createOtp(identifier: string, name?: string) {
 }
 
 export async function rememberPendingProfile(identifier: string, name?: string) {
-  if (!isMySqlConfigured()) {
-    return rememberLocalPendingProfile(identifier, name)
-  }
-
   const normalized = normalizeIdentifier(identifier)
   const state = await loadState()
   state.pendingProfiles[normalized] = {
@@ -270,10 +257,6 @@ export async function rememberPendingProfile(identifier: string, name?: string) 
 }
 
 export async function consumeOtp(identifier: string, code: string) {
-  if (!isMySqlConfigured()) {
-    return consumeLocalOtp(identifier, code)
-  }
-
   const normalized = normalizeIdentifier(identifier)
   const state = await loadState()
   const record = state.otps[normalized]
@@ -302,10 +285,6 @@ export async function finalizeSessionFromIdentifier(
   provider: 'otp' | 'google',
   extra?: FinalizeInput,
 ) {
-  if (!isMySqlConfigured()) {
-    return finalizeLocalSessionFromIdentifier(identifier, provider, extra)
-  }
-
   const state = await loadState()
   const session = finalizeSessionFromState(state, identifier, provider, extra)
   await saveState(state)
@@ -313,10 +292,6 @@ export async function finalizeSessionFromIdentifier(
 }
 
 export async function upsertGoogleSession(profile: GoogleProfile) {
-  if (!isMySqlConfigured()) {
-    return upsertLocalGoogleSession(profile)
-  }
-
   const state = await loadState()
   const email = profile.email?.trim().toLowerCase()
   const user = upsertUser(state, {
@@ -339,9 +314,5 @@ export async function upsertGoogleSession(profile: GoogleProfile) {
 }
 
 export async function clearAuthStateForTests() {
-  if (!isMySqlConfigured()) {
-    return clearLocalAuthStateForTests()
-  }
-
-  await deleteMySqlState('auth_state')
+  await deleteMySqlState(AUTH_STATE_KEY)
 }

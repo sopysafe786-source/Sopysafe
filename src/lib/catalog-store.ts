@@ -1,7 +1,6 @@
 import 'server-only'
 
 import crypto from 'node:crypto'
-import { readJsonFile, writeJsonFile } from '@/lib/persistent-json'
 import {
   categories as defaultCategories,
   defaultHomeSectionOrder,
@@ -12,6 +11,7 @@ import {
   type Product,
   type SiteContent,
 } from '@/lib/storefront-data'
+import { deleteMySqlState, readMySqlState, writeMySqlState } from '@/server/db/mysql-state'
 
 export type CatalogState = {
   site: SiteContent
@@ -21,12 +21,7 @@ export type CatalogState = {
   updatedAt: string
 }
 
-const FILE_NAME = 'catalog.json'
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __sopysafeCatalogState: CatalogState | undefined
-}
+const CATALOG_STATE_KEY = 'catalog_state'
 
 function normalizeProduct(product: Product): Product {
   return {
@@ -74,7 +69,7 @@ function createDefaultState(): CatalogState {
     categories: defaultCategories,
     products: defaultProducts.map(normalizeProduct),
     homeSectionOrder: defaultHomeSectionOrder,
-    updatedAt: new Date(0).toISOString(),
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -92,48 +87,33 @@ function normalizeState(state: Partial<CatalogState>): CatalogState {
   }
 }
 
-function loadState(): CatalogState {
-  if (globalThis.__sopysafeCatalogState) {
-    return globalThis.__sopysafeCatalogState
-  }
-
-  const fallback = createDefaultState()
-  const parsed = readJsonFile<Partial<CatalogState>>(FILE_NAME, fallback)
-  globalThis.__sopysafeCatalogState = normalizeState(parsed)
-  return globalThis.__sopysafeCatalogState
+export async function getCatalogState() {
+  return readMySqlState<CatalogState>(CATALOG_STATE_KEY, createDefaultState())
 }
 
-function saveState(state: CatalogState) {
-  writeJsonFile(FILE_NAME, state)
-  globalThis.__sopysafeCatalogState = state
-}
-
-export function getCatalogState() {
-  return loadState()
-}
-
-export function saveCatalogState(patch: Partial<CatalogState>) {
+export async function saveCatalogState(patch: Partial<CatalogState>) {
   const nextState = normalizeState({
-    ...loadState(),
+    ...(await getCatalogState()),
     ...patch,
     updatedAt: patch.updatedAt ?? new Date().toISOString(),
   })
 
-  saveState(nextState)
+  await writeMySqlState(CATALOG_STATE_KEY, nextState)
   return nextState
 }
 
-export function resetCatalogState() {
+export async function resetCatalogState() {
   const nextState = createDefaultState()
   nextState.updatedAt = new Date().toISOString()
-  saveState(nextState)
+  await deleteMySqlState(CATALOG_STATE_KEY)
+  await writeMySqlState(CATALOG_STATE_KEY, nextState)
   return nextState
 }
 
-export function getCatalogProduct(slug: string) {
-  return loadState().products.find((product) => product.slug === slug) ?? null
+export async function getCatalogProduct(slug: string) {
+  return (await getCatalogState()).products.find((product) => product.slug === slug) ?? null
 }
 
-export function getCatalogCategory(slug: string) {
-  return loadState().categories.find((category) => category.slug === slug) ?? null
+export async function getCatalogCategory(slug: string) {
+  return (await getCatalogState()).categories.find((category) => category.slug === slug) ?? null
 }

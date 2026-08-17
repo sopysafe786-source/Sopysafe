@@ -7,5 +7,5 @@ Runtime persistence is split into:
 - `src/server/auth` for auth session and OTP helpers
 - `src/server/db` for MySQL state storage helpers
 
-MySQL currently stores catalog, order, and auth state in the `app_state` table as JSON payloads.
-The seed script in `scripts/seed-mysql.ts` can bootstrap a fresh database from the local `.data` snapshot or default storefront data.
+MySQL stores catalog, order, and auth state in the `app_state` table as JSON payloads.
+The seed script in `scripts/seed-mysql.mjs` bootstraps a fresh database from the default storefront data.

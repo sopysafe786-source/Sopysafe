@@ -1,16 +1,8 @@
 import 'server-only'
 
 import crypto from 'node:crypto'
-import fs from 'node:fs'
-import path from 'node:path'
-import type {
-  CustomerInfo,
-  OrderCreateInput,
-  OrderLine,
-  OrderRecord,
-  OrderStatus,
-  OrderUpdateInput,
-} from '@/lib/order-types'
+import type { CustomerInfo, OrderCreateInput, OrderLine, OrderRecord, OrderStatus, OrderUpdateInput } from '@/lib/order-types'
+import { deleteMySqlState, readMySqlState, writeMySqlState } from '@/server/db/mysql-state'
 
 type OrderStore = {
   orders: OrderRecord[]
@@ -18,60 +10,13 @@ type OrderStore = {
 }
 
 const DEFAULT_SEQUENCE = 1000
-const DATA_DIR = path.join(process.cwd(), '.data')
-const ORDER_FILE = path.join(DATA_DIR, 'orders.json')
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __sopysafeOrderStore: OrderStore | undefined
-}
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-  }
-}
+const ORDER_STATE_KEY = 'orders_state'
 
 function createDefaultStore(): OrderStore {
   return {
     orders: [],
     sequence: DEFAULT_SEQUENCE,
   }
-}
-
-function loadStore(): OrderStore {
-  if (globalThis.__sopysafeOrderStore) {
-    return globalThis.__sopysafeOrderStore
-  }
-
-  ensureDataDir()
-  if (!fs.existsSync(ORDER_FILE)) {
-    globalThis.__sopysafeOrderStore = createDefaultStore()
-    return globalThis.__sopysafeOrderStore
-  }
-
-  try {
-    const parsed = JSON.parse(fs.readFileSync(ORDER_FILE, 'utf8')) as Partial<OrderStore>
-    globalThis.__sopysafeOrderStore = {
-      orders: Array.isArray(parsed.orders) ? parsed.orders.map(normalizeOrder) : [],
-      sequence: typeof parsed.sequence === 'number' ? parsed.sequence : DEFAULT_SEQUENCE,
-    }
-  } catch {
-    globalThis.__sopysafeOrderStore = createDefaultStore()
-  }
-
-  return globalThis.__sopysafeOrderStore
-}
-
-function saveStore(store: OrderStore) {
-  ensureDataDir()
-  const tempPath = `${ORDER_FILE}.tmp`
-  fs.writeFileSync(tempPath, `${JSON.stringify(store, null, 2)}\n`, 'utf8')
-  if (fs.existsSync(ORDER_FILE)) {
-    fs.unlinkSync(ORDER_FILE)
-  }
-  fs.renameSync(tempPath, ORDER_FILE)
-  globalThis.__sopysafeOrderStore = store
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -173,6 +118,14 @@ function normalizeOrder(order: Partial<OrderRecord>): OrderRecord {
   }
 }
 
+async function loadStore() {
+  return readMySqlState<OrderStore>(ORDER_STATE_KEY, createDefaultStore())
+}
+
+async function saveStore(store: OrderStore) {
+  return writeMySqlState(ORDER_STATE_KEY, store)
+}
+
 function normalizeOrderInput(input: OrderCreateInput): Omit<OrderRecord, 'orderNumber' | 'updatedAt'> & {
   updatedAt?: string
 } {
@@ -196,19 +149,19 @@ function normalizeOrderInput(input: OrderCreateInput): Omit<OrderRecord, 'orderN
   }
 }
 
-export function listOrders() {
-  return [...loadStore().orders].sort(
+export async function listOrders() {
+  return [...(await loadStore()).orders].sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
   )
 }
 
-export function getOrder(idOrNumber: string) {
+export async function getOrder(idOrNumber: string) {
   const key = idOrNumber.trim()
-  return loadStore().orders.find((order) => order.id === key || order.orderNumber === key) ?? null
+  return (await loadStore()).orders.find((order) => order.id === key || order.orderNumber === key) ?? null
 }
 
-export function createOrder(input: OrderCreateInput) {
-  const store = loadStore()
+export async function createOrder(input: OrderCreateInput) {
+  const store = await loadStore()
   const normalized = normalizeOrderInput(input)
   const now = new Date().toISOString()
   const order: OrderRecord = {
@@ -219,13 +172,13 @@ export function createOrder(input: OrderCreateInput) {
 
   store.sequence += 1
   store.orders = [order, ...store.orders.filter((item) => item.id !== order.id)]
-  saveStore(store)
+  await saveStore(store)
 
   return order
 }
 
-export function updateOrder(idOrNumber: string, patch: OrderUpdateInput): OrderRecord | null {
-  const store = loadStore()
+export async function updateOrder(idOrNumber: string, patch: OrderUpdateInput) {
+  const store = await loadStore()
   const targetIndex = store.orders.findIndex(
     (order) => order.id === idOrNumber || order.orderNumber === idOrNumber,
   )
@@ -248,17 +201,17 @@ export function updateOrder(idOrNumber: string, patch: OrderUpdateInput): OrderR
   }
 
   store.orders[targetIndex] = nextOrder
-  saveStore(store)
+  await saveStore(store)
   return nextOrder
 }
 
-export function deleteOrders() {
-  const store = loadStore()
+export async function deleteOrders() {
+  const store = await loadStore()
   store.orders = []
   store.sequence = DEFAULT_SEQUENCE
-  saveStore(store)
+  await saveStore(store)
 }
 
-export function listOrdersByStatus(status: OrderStatus) {
-  return listOrders().filter((order) => order.status === status)
+export async function listOrdersByStatus(status: OrderStatus) {
+  return (await listOrders()).filter((order) => order.status === status)
 }
