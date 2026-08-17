@@ -24,21 +24,20 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
    - `TWILIO_AUTH_TOKEN`
    - `TWILIO_VERIFY_SERVICE_SID`
    - `AUTH_SECRET`
-5. Run `npm run dev`
-6. Open the site on desktop or mobile using `http://localhost:3000` or `http://192.168.1.114:3000`
+5. Run `npm run db:seed` after MySQL is ready
+6. Run `npm run dev`
+7. Open the site on desktop or mobile using `http://localhost:3000` or `http://192.168.1.114:3000`
 
 ## Auth and storage
 - Google login uses the standard OAuth code flow with PKCE.
 - OTP delivery uses Twilio Verify when configured; otherwise the local dev fallback still works.
-- Orders and auth users are persisted in local `.data` JSON files for this scaffold.
+- Catalog, auth, and order state are stored in MySQL `app_state` rows.
+- The local `.data` folder is used as a seed source and fallback snapshot.
 - The app also exposes `/api/health` for deployment checks and `/api/catalog` for the live storefront state.
 
 ## Production checklist
-- Set the live site URL in `NEXT_PUBLIC_SITE_URL`
-- Add Google OAuth credentials
-- Add Twilio Verify credentials
-- Add payment gateway webhook secret
-- Verify `/api/health` returns `ready`
+- See [docs/production-checklist.md](./docs/production-checklist.md)
+- See [docs/deployment-guide.md](./docs/deployment-guide.md)
 
 ## Repository layout
 - `src/` application code
@@ -56,5 +55,5 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
 ## Backend stack
 - API layer: Next.js App Router route handlers
 - Service layer: TypeScript backend services in `src/server/services`
-- Storage layer: repository-style local JSON storage for now
+- Storage layer: MySQL-backed `app_state` JSON storage with local fallback snapshots
 - Database layer: MySQL via `MYSQL_URL` with `DATABASE_URL` fallback for compatibility

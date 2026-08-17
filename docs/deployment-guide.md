@@ -1,20 +1,36 @@
 # Deployment Guide
 
-## Web
-- Deploy the Next.js app to Vercel.
+## Recommended Flow
+1. Create the production MySQL database.
+2. Apply `src/server/db/schema.sql`.
+3. Set the production environment variables.
+4. Run `npm run db:seed` to load the live `app_state` rows.
+5. Run `npm run typecheck` and `npm run build`.
+6. Deploy the Next.js app.
+7. Verify the live site and `/api/health`.
 
-## Backend
-- Host the API and workers on Railway or a comparable Node platform.
-
-## Infrastructure
-- MySQL for the database
-- Redis for caching and rate limits
-- Cloudinary or S3 for media
-
-## Environment Variables
+## Required Environment Variables
 - `NEXT_PUBLIC_SITE_URL`
 - `MYSQL_URL`
 - `DATABASE_URL` optional fallback
-- `REDIS_URL`
-- `RAZORPAY_KEY_ID`
-- `RAZORPAY_KEY_SECRET`
+- `AUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
+- `RAZORPAY_WEBHOOK_SECRET`
+
+## Storage
+- MySQL is the primary store.
+- `app_state` holds catalog, auth, and order JSON payloads.
+- `src/server/db/schema.sql` defines the table.
+
+## Go-Live Checks
+- Homepage loads on desktop and mobile.
+- Search works.
+- Product detail page opens correctly.
+- Cart updates persist.
+- Login and OTP flows work.
+- Checkout reaches the payment step.

@@ -23,4 +23,5 @@
 ## Notes
 - MySQL is the primary store.
 - Schema lives in `src/server/db/schema.sql`.
-- Redis should support cache, sessions, and rate limiting.
+- The current runtime stores catalog, auth, and order state in `app_state` JSON payloads.
+- Redis is not required for the current scaffold.
