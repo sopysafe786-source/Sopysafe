@@ -5,7 +5,7 @@ import {
   finalizeSessionFromIdentifier,
   getSessionCookieName,
 } from '@/server/auth/auth-otp-store'
-import { verifyOtpForIdentifier } from '@/server/auth/twilio-otp'
+import { verifyOtp } from '@/server/services/auth-service'
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as
@@ -22,15 +22,15 @@ export async function POST(request: Request) {
   let session = null
 
   try {
-    const twilioCheck = await verifyOtpForIdentifier(identifier, code)
+    const twilioCheck = await verifyOtp(identifier, code)
     session = twilioCheck.configured
       ? twilioCheck.valid
-        ? finalizeSessionFromIdentifier(identifier, 'otp')
+        ? await finalizeSessionFromIdentifier(identifier, 'otp')
         : null
-      : consumeOtp(identifier, code)
+      : await consumeOtp(identifier, code)
   } catch {
     if (process.env.NODE_ENV !== 'production') {
-      session = consumeOtp(identifier, code)
+      session = await consumeOtp(identifier, code)
     } else {
       return NextResponse.json({ error: 'Unable to verify code right now' }, { status: 503 })
     }

@@ -7,13 +7,14 @@
 - Host the API and workers on Railway or a comparable Node platform.
 
 ## Infrastructure
-- PostgreSQL for the database
+- MySQL for the database
 - Redis for caching and rate limits
 - Cloudinary or S3 for media
 
 ## Environment Variables
 - `NEXT_PUBLIC_SITE_URL`
-- `DATABASE_URL`
+- `MYSQL_URL`
+- `DATABASE_URL` optional fallback
 - `REDIS_URL`
 - `RAZORPAY_KEY_ID`
 - `RAZORPAY_KEY_SECRET`

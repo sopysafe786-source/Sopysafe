@@ -1,7 +1,7 @@
-import { getCatalogState } from '@/server/storage/catalog-store'
+import { listCatalogProducts } from '@/server/services/catalog-service'
 
 export async function GET() {
-  const { products } = getCatalogState()
+  const products = await listCatalogProducts()
   return Response.json({
     items: products,
     total: products.length,

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { getOrder, updateOrder } from '@/server/storage/order-store'
+import { findOrderRecord, updateOrderRecord } from '@/server/services/order-service'
 import type { OrderUpdateInput } from '@/lib/order-types'
 
 function verifySignature(body: string, signature: string, secret: string) {
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
   const orderKey = resolveOrderKey(payload)
   const update = resolveUpdate(payload)
-  const order = orderKey ? updateOrder(orderKey, update) : null
+  const order = orderKey ? await updateOrderRecord(orderKey, update) : null
 
   return Response.json({
     received: true,
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const order = getOrder('non-existent')
+  const order = await findOrderRecord('non-existent')
   return Response.json({
     provider: 'razorpay',
     ready: true,

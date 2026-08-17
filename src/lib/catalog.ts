@@ -23,6 +23,6 @@ export const faqItems = [
   {
     question: 'Can this scale to a large catalog?',
     answer:
-      'Yes. The app is structured for CDN delivery, product caching, server-side rendering, and a PostgreSQL plus Redis backend model.',
+      'Yes. The app is structured for CDN delivery, product caching, server-side rendering, and a MySQL plus Redis backend model.',
   },
 ]

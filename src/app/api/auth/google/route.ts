@@ -93,7 +93,7 @@ export async function GET(request: Request) {
     })
 
     const profile = await fetchGoogleProfile(tokenResponse.access_token)
-    const session = upsertGoogleSession(profile)
+    const session = await upsertGoogleSession(profile)
 
     const response = NextResponse.redirect(siteUrl(storedState.returnTo || '/account'))
     response.cookies.set(getSessionCookieName(), encodeSession(session), {

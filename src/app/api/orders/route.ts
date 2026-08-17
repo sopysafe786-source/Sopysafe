@@ -1,4 +1,10 @@
-import { createOrder, deleteOrders, getOrder, listOrders, updateOrder } from '@/server/storage/order-store'
+import {
+  createOrderRecord,
+  deleteOrderRecords,
+  findOrderRecord,
+  listOrderRecords,
+  updateOrderRecord,
+} from '@/server/services/order-service'
 import type { OrderCreateInput, OrderUpdateInput } from '@/lib/order-types'
 
 function parseJsonBody<T>(request: Request) {
@@ -12,7 +18,7 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status')?.trim()
 
   if (id || orderNumber) {
-    const order = getOrder(id ?? orderNumber ?? '')
+    const order = await findOrderRecord(id ?? orderNumber ?? '')
     if (!order) {
       return Response.json({ message: 'Order not found' }, { status: 404 })
     }
@@ -20,7 +26,9 @@ export async function GET(request: Request) {
     return Response.json({ order })
   }
 
-  const orders = status ? listOrders().filter((order) => order.status === status) : listOrders()
+  const orders = status
+    ? (await listOrderRecords()).filter((order) => order.status === status)
+    : await listOrderRecords()
 
   return Response.json({
     orders,
@@ -36,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const order = createOrder(body)
+    const order = await createOrderRecord(body)
 
     return Response.json(
       {
@@ -69,7 +77,7 @@ export async function PATCH(request: Request) {
     return Response.json({ message: 'Order id is required' }, { status: 400 })
   }
 
-  const order = updateOrder(key, body)
+  const order = await updateOrderRecord(key, body)
 
   if (!order) {
     return Response.json({ message: 'Order not found' }, { status: 404 })
@@ -79,6 +87,6 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE() {
-  deleteOrders()
+  await deleteOrderRecords()
   return Response.json({ cleared: true })
 }

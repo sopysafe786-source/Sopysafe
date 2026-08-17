@@ -21,6 +21,6 @@
 - SupportTicket
 
 ## Notes
-- PostgreSQL is the primary store.
-- Prisma owns schema and relations.
+- MySQL is the primary store.
+- Schema lives in `src/server/db/schema.sql`.
 - Redis should support cache, sessions, and rate limiting.

@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ProductDetail } from '@/components/product-detail'
-import { getCatalogProduct, getCatalogState } from '@/server/storage/catalog-store'
+import { findCatalogProduct, listCatalogProducts } from '@/server/services/catalog-service'
 import { siteName, siteUrl } from '@/lib/site'
 
-export function generateStaticParams() {
-  return getCatalogState().products.map((product) => ({ slug: product.slug }))
+export async function generateStaticParams() {
+  return (await listCatalogProducts()).map((product) => ({ slug: product.slug }))
 }
 
 export async function generateMetadata({
@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const product = getCatalogProduct(slug)
+  const product = await findCatalogProduct(slug)
 
   if (!product) {
     return {
@@ -39,7 +39,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const product = getCatalogProduct(slug)
+  const product = await findCatalogProduct(slug)
 
   if (!product) notFound()
 

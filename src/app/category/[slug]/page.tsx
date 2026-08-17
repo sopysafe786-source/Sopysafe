@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { CategoryBrowser } from '@/components/storefront-browser'
-import { getCatalogCategory, getCatalogState } from '@/server/storage/catalog-store'
+import { findCatalogCategory, listCatalogCategories } from '@/server/services/catalog-service'
 
 type SearchParams = {
   q?: string | string[]
@@ -9,8 +9,8 @@ type SearchParams = {
   sort?: string | string[]
 }
 
-export function generateStaticParams() {
-  return getCatalogState().categories.map((category) => ({ slug: category.slug }))
+export async function generateStaticParams() {
+  return (await listCatalogCategories()).map((category) => ({ slug: category.slug }))
 }
 
 export default async function CategoryPage({
@@ -27,7 +27,7 @@ export default async function CategoryPage({
   const stock = typeof resolvedSearchParams.stock === 'string' ? resolvedSearchParams.stock : undefined
   const sort = typeof resolvedSearchParams.sort === 'string' ? resolvedSearchParams.sort : undefined
 
-  if (!getCatalogCategory(slug)) {
+  if (!(await findCatalogCategory(slug))) {
     notFound()
   }
 

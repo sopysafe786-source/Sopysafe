@@ -8,7 +8,7 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
 - Dynamic product and category routes
 - Account, policy, checkout, and admin surfaces
 - SEO routes and metadata helpers
-- Prisma schema for PostgreSQL
+- MySQL-backed backend with a clean TypeScript service layer
 - API route scaffolding
 - Brand and implementation docs
 
@@ -46,8 +46,15 @@ Premium Indian e-commerce scaffold for the SopySafe brand.
 - `src/components/` frontend UI
 - `src/lib/` shared domain/data helpers
 - `src/server/` backend-facing storage, auth, and config adapters
+- `src/server/services/` backend service layer for orders, catalog, and auth flows
 - `public/` static assets
 - `docs/` planning and reference documents
 - `docs/assets/` design screenshots and visual references
-- `prisma/` database schema
+- `src/server/db/` MySQL connection and schema helpers
 - Root config files only: `package.json`, `next.config.mjs`, `tsconfig*.json`, `eslint.config.mjs`, `postcss.config.mjs`
+
+## Backend stack
+- API layer: Next.js App Router route handlers
+- Service layer: TypeScript backend services in `src/server/services`
+- Storage layer: repository-style local JSON storage for now
+- Database layer: MySQL via `MYSQL_URL` with `DATABASE_URL` fallback for compatibility

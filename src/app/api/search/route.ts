@@ -1,21 +1,13 @@
-import { getCatalogState } from '@/server/storage/catalog-store'
+import { searchCatalogProducts } from '@/server/services/catalog-service'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase()
-  const { products } = getCatalogState()
-
-  const results = q
-    ? products.filter((product) =>
-        [product.name, product.brand, product.category, product.summary].some((field) =>
-          field.toLowerCase().includes(q),
-        ),
-      )
-    : products
+  const q = (url.searchParams.get('q') ?? '').trim()
+  const { products } = await searchCatalogProducts(q)
 
   return Response.json({
-    query: q,
-    count: results.length,
-    items: results,
+    query: q.toLowerCase(),
+    count: products.length,
+    items: products,
   })
 }

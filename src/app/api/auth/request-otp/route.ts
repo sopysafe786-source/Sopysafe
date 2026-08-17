@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createOtp, rememberPendingProfile } from '@/server/auth/auth-otp-store'
-import { sendOtpToIdentifier } from '@/server/auth/twilio-otp'
+import { requestOtp } from '@/server/services/auth-service'
 import { getMissingRuntimeConfigKeys } from '@/server/config/runtime-config'
 
 export async function POST(request: Request) {
@@ -15,40 +14,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Identifier is required' }, { status: 400 })
   }
 
-  rememberPendingProfile(identifier, name)
-
-  const maskedIdentifier = identifier.includes('@')
-    ? identifier.replace(/^(.).+(@.+)$/, '$1***$2')
-    : identifier.replace(/(\d{2})\d+(\d{2})/, '$1******$2')
-
   try {
-    const delivery = await sendOtpToIdentifier(identifier)
+    const delivery = await requestOtp(identifier, name)
 
-    if (!delivery.configured) {
-      if (process.env.NODE_ENV === 'production') {
-        return NextResponse.json(
-          {
-            error: 'OTP delivery is not configured',
-            missing: getMissingRuntimeConfigKeys().filter((item) => item.includes('TWILIO_')),
-          },
-          { status: 503 },
-        )
-      }
-
-      const otp = createOtp(identifier, name)
-      return NextResponse.json({
-        ok: true,
-        maskedIdentifier,
-        channel: identifier.includes('@') ? 'email' : 'sms',
-        devOtp: otp,
-      })
+    if (!delivery.configured && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        {
+          error: 'OTP delivery is not configured',
+          missing: getMissingRuntimeConfigKeys().filter((item) => item.includes('TWILIO_')),
+        },
+        { status: 503 },
+      )
     }
 
     return NextResponse.json({
       ok: true,
-      maskedIdentifier,
-      channel: identifier.includes('@') ? 'email' : 'sms',
-      devOtp: undefined,
+      maskedIdentifier: delivery.maskedIdentifier,
+      channel: delivery.channel,
+      devOtp: delivery.devOtp,
     })
   } catch (error) {
     if (process.env.NODE_ENV === 'production') {
@@ -56,12 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 500 })
     }
 
-    const otp = createOtp(identifier, name)
-    return NextResponse.json({
-      ok: true,
-      maskedIdentifier,
-      channel: identifier.includes('@') ? 'email' : 'sms',
-      devOtp: otp,
-    })
+    const message = error instanceof Error ? error.message : 'Unable to send verification code'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
